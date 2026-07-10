@@ -1,0 +1,112 @@
+# AI-native evaluation suite for Wiki Deep Agent
+# Based on SPEC-002 acceptance criteria and BHIL AI-native patterns
+# Run with: npx promptfoo eval --config tests/eval-suite.yaml
+
+description: "Wiki Deep Agent Quality Evaluation"
+
+providers:
+  - id: anthropic:messages:claude-sonnet-4-5-20250929
+    config:
+      temperature: 0.3
+      max_tokens: 4096
+
+prompts:
+  - |
+    You are a wiki maintenance agent. {{task}}
+
+tests:
+  # --- Ingest Quality ---
+  - description: "Ingest: Summary captures key facts"
+    vars:
+      task: |
+        Summarise this source document for the wiki:
+        Title: Attention Is All You Need
+        Content: The Transformer architecture replaces recurrence and convolutions
+        entirely with attention mechanisms. It achieves state-of-the-art results
+        on machine translation with significantly less training time.
+    assert:
+      - type: llm-rubric
+        value: "Summary accurately mentions Transformer, attention mechanisms, and machine translation"
+        threshold: 0.85
+
+  - description: "Ingest: Entity extraction"
+    vars:
+      task: |
+        Extract named entities (people, organisations, projects) from this text:
+        Andrej Karpathy, formerly of Tesla and OpenAI, created the LLM Wiki
+        pattern and uses Obsidian for his markdown vault.
+    assert:
+      - type: contains-all
+        value: ["Andrej Karpathy", "Tesla", "OpenAI"]
+      - type: llm-rubric
+        value: "All major entities are identified with correct categorisation"
+        threshold: 0.85
+
+  - description: "Ingest: Cross-reference generation"
+    vars:
+      task: |
+        Generate cross-references for a wiki page about Transformers.
+        Related entities: Vaswani, Google Brain. Related concepts: Self-Attention, BERT.
+        Use [[wikilink]] format.
+    assert:
+      - type: contains-any
+        value: ["[[Vaswani]]", "[[Google Brain]]", "[[Self-Attention]]"]
+
+  # --- Query Quality ---
+  - description: "Query: Grounded answer with citations"
+    vars:
+      task: |
+        Answer this question using ONLY the following wiki pages:
+        Page 1 (wiki/entities/karpathy.md): Andrej Karpathy is an AI researcher who
+        created the LLM Wiki pattern.
+        Page 2 (wiki/concepts/llm-wiki.md): LLM Wiki is a pattern where the LLM
+        builds and maintains a persistent wiki.
+        Question: What is the LLM Wiki and who created it?
+    assert:
+      - type: llm-rubric
+        value: "Answer cites specific wiki page paths and does not hallucinate beyond provided context"
+        threshold: 0.85
+      - type: contains-any
+        value: ["karpathy", "Karpathy"]
+
+  - description: "Query: Handles missing information"
+    vars:
+      task: |
+        Answer this question using ONLY the following wiki pages:
+        Page 1 (wiki/concepts/llm-wiki.md): LLM Wiki is a knowledge management pattern.
+        Question: What programming language is LLM Wiki written in?
+    assert:
+      - type: llm-rubric
+        value: "Response acknowledges that the wiki does not contain this information rather than guessing"
+        threshold: 0.80
+
+  # --- Lint Quality ---
+  - description: "Lint: Detect missing frontmatter"
+    vars:
+      task: |
+        Check this wiki page for quality issues:
+        ```
+        # My Page
+        Some content without YAML frontmatter.
+        ```
+        Report issues in JSON format with category, severity, and description.
+    assert:
+      - type: contains-any
+        value: ["frontmatter", "missing"]
+      - type: llm-rubric
+        value: "Correctly identifies missing YAML frontmatter as a high-severity issue"
+        threshold: 0.85
+
+  - description: "Lint: Detect orphan page"
+    vars:
+      task: |
+        This wiki page has no inbound links from any other page:
+        wiki/concepts/orphan-topic.md
+        Total pages in wiki: 50. Pages linking to this: 0.
+        Report this as an issue with severity and suggested fix.
+    assert:
+      - type: contains-any
+        value: ["orphan", "no inbound", "no links"]
+      - type: llm-rubric
+        value: "Correctly identifies the orphan page issue and suggests adding cross-references"
+        threshold: 0.75
