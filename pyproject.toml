@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "brainstem-mcp"
-version = "0.3.0"
+version = "0.3.1"
 description = "Brainstem — local-first knowledge backend for AI agents. Connect any MCP host (Claude Code, Cursor) to an Obsidian-compatible wiki with indexed retrieval, token-budgeted recall, and secure ingestion."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -69,6 +69,7 @@ Roadmap = "https://github.com/DarkCodePE/second-brain-wiki/blob/main/docs/swarm-
 
 [project.scripts]
 brainstem = "wiki_agent.brainstem_cli:main"
+brainstem-mcp = "wiki_agent.brainstem_cli:main"  # uvx runs the script matching the dist name
 sbw = "wiki_agent.cli:main"
 sbw-doctor = "wiki_agent.doctor:main"
 wiki-agent = "wiki_agent.cli:main"
