@@ -8,12 +8,29 @@ connection one-liner, root-resolution precedence, argv/env translation onto
 
 from __future__ import annotations
 
+import os
 import sys
 from types import SimpleNamespace
 
 import pytest
 
 from wiki_agent import brainstem_cli
+
+
+@pytest.fixture(autouse=True)
+def _sandbox_process_globals():
+    """cmd_mcp mutates sys.argv and WIKI_MCP_READONLY for the in-process server
+    handoff (fine in a real CLI process, fatal leaked across tests: the stdio
+    e2e test would inherit readonly mode and see 12 tools instead of 27)."""
+    argv = list(sys.argv)
+    readonly = os.environ.get("WIKI_MCP_READONLY")
+    yield
+    sys.argv = argv
+    if readonly is None:
+        os.environ.pop("WIKI_MCP_READONLY", None)
+    else:
+        os.environ["WIKI_MCP_READONLY"] = readonly
+
 
 # ---------------------------------------------------------------------------
 # _resolve_root precedence: --root > $WIKI_ROOT > default
